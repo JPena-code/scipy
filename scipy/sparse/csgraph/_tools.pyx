@@ -268,7 +268,7 @@ def csgraph_to_dense(csgraph, null_value=0):
     The reason for this difference is to allow a compressed sparse graph to
     represent multiple edges between any two nodes.  As most sparse graph
     algorithms are concerned with the single lowest-cost edge between any
-    two nodes, the default scipy.sparse behavior of summming multiple weights
+    two nodes, the default scipy.sparse behavior of summing multiple weights
     does not make sense in this context.
 
     The other reason for using this routine is to allow for graphs with
@@ -281,8 +281,8 @@ def csgraph_to_dense(csgraph, null_value=0):
     >>> indptr = np.array([0, 1, 1])
     >>> M = csr_matrix((data, indices, indptr), shape=(2, 2))
     >>> M.toarray()
-    array([[0, 0],
-           [0, 0]])
+    array([[0., 0.],
+           [0., 0.]])
     >>> csgraph.csgraph_to_dense(M, np.inf)
     array([[inf,  0.],
            [inf, inf]])
@@ -453,10 +453,13 @@ def reconstruct_path(csgraph, predecessors, directed=True):
     ... ]
     >>> graph = csr_matrix(graph)
     >>> print(graph)
-       (np.int32(0), np.int32(1))	1
-       (np.int32(0), np.int32(2))	2
-       (np.int32(1), np.int32(3))	1
-       (np.int32(2), np.int32(3))	3
+    <Compressed Sparse Row sparse matrix of dtype 'int64'
+    	with 4 stored elements and shape (4, 4)>
+    	Coords	Values
+    	(0, 1)	1
+    	(0, 2)	2
+    	(1, 3)	1
+    	(2, 3)	3
 
     >>> pred = np.array([-9999, 0, 0, 1], dtype=np.int32)
 
@@ -472,6 +475,7 @@ def reconstruct_path(csgraph, predecessors, directed=True):
     is_pydata_sparse = is_pydata_spmatrix(csgraph)
     if is_pydata_sparse:
         pydata_sparse_cls = csgraph.__class__
+        pydata_sparse_fill_value = csgraph.fill_value
     csgraph = validate_graph(csgraph, directed, dense_output=False)
 
     N = csgraph.shape[0]
@@ -502,7 +506,14 @@ def reconstruct_path(csgraph, predecessors, directed=True):
 
     sctree = csr_matrix((data, indices, indptr), shape=(N, N))
     if is_pydata_sparse:
-        sctree = pydata_sparse_cls.from_scipy_sparse(sctree)
+        # The `fill_value` keyword is new in PyData Sparse 0.15.4 (May 2024),
+        # remove the `except` once the minimum supported version is >=0.15.4
+        try:
+            sctree = pydata_sparse_cls.from_scipy_sparse(
+                sctree, fill_value=pydata_sparse_fill_value
+            )
+        except TypeError:
+            sctree = pydata_sparse_cls.from_scipy_sparse(sctree)
     return sctree
 
 
@@ -562,10 +573,13 @@ def construct_dist_matrix(graph,
     ... ]
     >>> graph = csr_matrix(graph)
     >>> print(graph)
-       (np.int32(0), np.int32(1))	1
-       (np.int32(0), np.int32(2))	2
-       (np.int32(1), np.int32(3))	1
-       (np.int32(2), np.int32(3))	3
+    <Compressed Sparse Row sparse matrix of dtype 'int64'
+    	with 4 stored elements and shape (4, 4)>
+    	Coords	Values
+    	(0, 1)	1
+    	(0, 2)	2
+    	(1, 3)	1
+    	(2, 3)	3
 
     >>> pred = np.array([[-9999, 0, 0, 2],
     ...                  [1, -9999, 0, 1],
